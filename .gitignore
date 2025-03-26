@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment and dependencies
+.env
+.venv/
+env/
+venv/
+*.egg-info/
+
+# Model files and data
+models/
+*.npy
+*.pth
+*.h5
+*.gz
+*.csv
+*.zip
+
+# Docker
+*.swp
+*.tmp
+docker-compose.yml
+.dockerignore
+
+# VS Code / PyCharm
+.idea/
+.vscode/
+
+# Logs / misc
+*.log
+.DS_Store
+Thumbs.db
