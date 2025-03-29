@@ -33,3 +33,6 @@ docker-compose.yml
 *.log
 .DS_Store
 Thumbs.db
+
+# AWS SSH key
+True-Detect-Key.pem
