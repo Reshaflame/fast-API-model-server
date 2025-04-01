@@ -44,7 +44,7 @@ RUN pip install --no-cache-dir Flask gdown && \
 # Copy source code
 COPY ./app /app/app
 COPY ./app/data /app/data
-COPY ./app/models /app/app/models
+COPY ./app/models /app/models
 
 
 # Set working directory
