@@ -11,13 +11,13 @@ venv/
 *.egg-info/
 
 # Model files and data
-models/
-*.npy
-*.pth
-*.h5
-*.gz
-*.csv
-*.zip
+# models/
+# *.npy
+# *.pth
+# *.h5
+# *.gz
+# *.csv
+# *.zip
 
 # Docker
 *.swp
