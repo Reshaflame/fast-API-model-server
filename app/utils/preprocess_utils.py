@@ -44,5 +44,7 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
             df[col] = 0
     df = df[expected]
 
+    df = df.astype(np.float32)
+
     tensor = torch.tensor(df.to_numpy(), dtype=torch.float32).unsqueeze(1)  # [B, 1, F]
     return tensor
