@@ -44,6 +44,7 @@ RUN pip install --no-cache-dir Flask gdown && \
 # Copy source code
 COPY ./app /app/app
 COPY ./app/data /app/data
+COPY ./gru.py /app/app/models/gru.py
 
 # Set working directory
 WORKDIR /app
