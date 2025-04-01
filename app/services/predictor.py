@@ -1,6 +1,7 @@
 from app.utils.preprocess_utils import preprocess_batch
 from app.services.model_loader import load_model
 import torch
+import json
 
 # 🔁 Load once
 with open("data/expected_features.json") as f:
