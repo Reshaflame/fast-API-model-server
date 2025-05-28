@@ -46,5 +46,10 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
 
     df = df.astype(np.float32)
 
-    tensor = torch.tensor(df.to_numpy(), dtype=torch.float32).unsqueeze(1)  # [B, 1, F]
-    return tensor
+    # === Shape for GRU: [B, 1, F]
+    # === Shape for LSTM+RNN: [B, 10, F] ← simulate a flat sequence
+    tensor = torch.tensor(df.to_numpy(), dtype=torch.float32)
+    sequence_length = 10
+    padded_tensor = tensor.unsqueeze(1).repeat(1, sequence_length, 1)  # [B, 10, F]
+
+    return padded_tensor
