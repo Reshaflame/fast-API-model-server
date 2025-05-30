@@ -2,6 +2,8 @@ import torch
 import json
 from app.models.gru import GRUAnomalyDetector
 from app.models.lstm_rnn import LSTM_RNN_Hybrid
+from app.models.isolation_forest import IsolationForestWrapper
+
 
 def load_gru_with_guess(model_path: str, input_size: int):
     # Try the original search grid you used during training
@@ -73,11 +75,7 @@ def load_lstm_with_guess(model_path: str, input_size: int):
 
     raise RuntimeError("❌ Could not load LSTM+RNN model with any known config.")
 
-# Mock Isolation Forest (returns 0 always)
-def load_isolation_forest():
-    class MockIF:
-        def predict(self, X):
-            return [0] * len(X)  # 0 = normal (not anomalous)
-        def decision_function(self, X):
-            return [0.0] * len(X)  # Always neutral
-    return MockIF()
+
+def load_isolation_forest(model_path: str):
+    return IsolationForestWrapper(model_path)
+

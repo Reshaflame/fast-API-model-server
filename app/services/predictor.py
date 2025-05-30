@@ -12,7 +12,7 @@ with open("data/expected_features.json") as f:
 # 🧠 Load models
 GRU_MODEL = load_gru_with_guess("models/gru_trained_model.pth", input_size)
 LSTM_MODEL = load_lstm_with_guess("models/lstm_rnn_trained_model.pth", input_size)
-ISO_MODEL = load_isolation_forest()  # mock
+ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
 MLP_HEAD = EnsembleMLP()
 weights_path = "models/mlp_weights.pth"
 
@@ -23,9 +23,9 @@ else:
     print("⚠️ No saved MLP weights found — using default voting weights.")
 
 # Ensemble weights
-W_GRU = 0.5
-W_LSTM = 0.5
-W_ISO = 0.0
+W_GRU = 0.45
+W_LSTM = 0.45
+W_ISO = 0.10
 
 def predict_batch(req):
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
@@ -35,7 +35,7 @@ def predict_batch(req):
         lstm_scores = LSTM_MODEL(input_tensor).squeeze().tolist()
 
     iso_input = input_tensor[:, -1, :].numpy()
-    iso_scores = ISO_MODEL.decision_function(None)
+    iso_scores = ISO_MODEL.decision_function(iso_input)
     if isinstance(iso_scores, float):
         iso_scores = [iso_scores] * len(req.data)
 
