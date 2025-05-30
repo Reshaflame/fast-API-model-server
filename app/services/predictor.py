@@ -35,8 +35,14 @@ def predict_batch(req):
     print(f"🧮 Preprocessed tensor shape: {input_tensor.shape}")
 
     with torch.no_grad():
-        gru_scores = GRU_MODEL(input_tensor).squeeze().tolist()
-        lstm_scores = LSTM_MODEL(input_tensor).squeeze().tolist()
+        gru_out = GRU_MODEL(input_tensor).squeeze()
+        lstm_out = LSTM_MODEL(input_tensor).squeeze()
+
+        gru_scores = gru_out.tolist() if isinstance(gru_out, torch.Tensor) and gru_out.ndim > 0 else [gru_out.item()]
+        lstm_scores = lstm_out.tolist() if isinstance(lstm_out, torch.Tensor) and lstm_out.ndim > 0 else [lstm_out.item()]
+        print(f"✅ Final GRU scores: {gru_scores}")
+        print(f"✅ Final LSTM scores: {lstm_scores}")
+
     
     print(f"🔮 GRU scores: {gru_scores}")
     print(f"🔮 LSTM scores: {lstm_scores}")
@@ -61,7 +67,9 @@ def predict_batch(req):
     )
 
     with torch.no_grad():
-        ensemble_preds = MLP_HEAD(input_scores).squeeze().tolist()
+        raw_preds = MLP_HEAD(input_scores).squeeze()
+        ensemble_preds = raw_preds.tolist() if isinstance(raw_preds, torch.Tensor) and raw_preds.ndim > 0 else [raw_preds.item()]
+
 
     return [
         {
