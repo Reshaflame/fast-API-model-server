@@ -35,9 +35,13 @@ def predict_batch(req):
         lstm_scores = LSTM_MODEL(input_tensor).squeeze().tolist()
 
     iso_input = input_tensor[:, -1, :].numpy()
-    iso_scores = ISO_MODEL.decision_function(iso_input)
-    if isinstance(iso_scores, float):
-        iso_scores = [iso_scores] * len(req.data)
+    try:
+        iso_scores = ISO_MODEL.decision_function(iso_input)
+        if isinstance(iso_scores, float) or not hasattr(iso_scores, "__len__"):
+            iso_scores = [iso_scores] * len(req.data)
+    except Exception as e:
+        print(f"⚠️ Isolation Forest error: {e}")
+        iso_scores = [0.0] * len(req.data)
 
     # 🧠 Combine scores and run through MLP
     input_scores = torch.tensor(
