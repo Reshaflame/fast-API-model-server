@@ -28,15 +28,25 @@ W_LSTM = 0.5
 W_ISO = 0.2
 
 def predict_batch(req):
+    print(f"📨 Received batch of {len(req.data)} rows.")
+    print("🔍 First row example:", req.data[0].dict() if req.data else "EMPTY")
+
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
+    print(f"🧮 Preprocessed tensor shape: {input_tensor.shape}")
 
     with torch.no_grad():
         gru_scores = GRU_MODEL(input_tensor).squeeze().tolist()
         lstm_scores = LSTM_MODEL(input_tensor).squeeze().tolist()
+    
+    print(f"🔮 GRU scores: {gru_scores}")
+    print(f"🔮 LSTM scores: {lstm_scores}")
 
     iso_input = input_tensor[:, -1, :].numpy()
+    print(f"📊 ISO input shape: {iso_input.shape}")
+
     try:
         iso_scores = ISO_MODEL.decision_function(iso_input)
+        print(f"🧪 ISO scores: {iso_scores}")
         if isinstance(iso_scores, float) or not hasattr(iso_scores, "__len__"):
             iso_scores = [iso_scores] * len(req.data)
     except Exception as e:
@@ -44,6 +54,7 @@ def predict_batch(req):
         iso_scores = [0.0] * len(req.data)
 
     # 🧠 Combine scores and run through MLP
+    print("📥 Combining scores...")
     input_scores = torch.tensor(
         [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
         dtype=torch.float32
