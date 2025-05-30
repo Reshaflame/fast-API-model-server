@@ -23,9 +23,9 @@ else:
     print("⚠️ No saved MLP weights found — using default voting weights.")
 
 # Ensemble weights
-W_GRU = 0.45
-W_LSTM = 0.45
-W_ISO = 0.10
+W_GRU = 0.5
+W_LSTM = 0.5
+W_ISO = 0.2
 
 def predict_batch(req):
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
