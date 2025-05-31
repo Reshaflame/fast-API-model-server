@@ -44,13 +44,8 @@ COPY ./app /app/app
 COPY ./app/data /app/data
 COPY ./app/models /app/models
 
-# Copy and set permissions
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
 # Set working directory
 WORKDIR /app
 
-# Start from script (not directly via CMD)
-CMD ["/app/start.sh"]
-
+# Run the FastAPI app directly
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
