@@ -69,6 +69,8 @@ def predict_batch(req):
     with torch.no_grad():
         # raw_preds = MLP_HEAD(input_scores).squeeze()
         # ensemble_preds = raw_preds.tolist() if isinstance(raw_preds, torch.Tensor) and raw_preds.ndim > 0 else [raw_preds.item()]
+        for i in range(len(req.data)):
+            print(f"Row {i}: GRU={gru_scores[i]}, LSTM={lstm_scores[i]}, ISO={iso_scores[i]}")
         ensemble_preds = [
             W_GRU * gru_scores[i] + W_LSTM * lstm_scores[i] + W_ISO * iso_scores[i]
             for i in range(len(req.data))
