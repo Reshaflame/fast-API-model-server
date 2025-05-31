@@ -22,7 +22,7 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
 
     # Combine: Use datetime if parsed, else numeric
     df["time"] = np.where(parsed_time.notna(),
-                        parsed_time.view("int64") // 1_000_000_000,
+                        parsed_time.astype("int64") // 1_000_000_000,
                         numeric_time.fillna(0).astype("int64"))
 
     # Clip to avoid negatives
