@@ -1,12 +1,12 @@
 import torch
 import pandas as pd
 import json
+import os
 from app.utils.preprocess_utils import preprocess_batch
 from app.services.model_loader import load_gru_with_guess, load_lstm_with_guess, load_isolation_forest
 from app.models.ensemble_head import EnsembleMLP
-import os
 
-# 📦 Load input size
+# 📦 Load expected feature size
 with open("data/expected_features.json") as f:
     input_size = len(json.load(f))
 
@@ -15,30 +15,31 @@ GRU_MODEL = load_gru_with_guess("models/gru_trained_model.pth", input_size)
 LSTM_MODEL = load_lstm_with_guess("models/lstm_rnn_trained_model.pth", input_size)
 ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
 MLP_HEAD = EnsembleMLP()
-weights_path = "models/mlp_weights.pth"
 
+weights_path = "models/mlp_weights.pth"
 if os.path.exists(weights_path):
     MLP_HEAD.load_state_dict(torch.load(weights_path))
     print("✅ Loaded saved MLP ensemble weights.")
 else:
     print("⚠️ No saved MLP weights found — using default voting weights.")
 
-# Ensemble weights
+# ⚖️ Manual ensemble weights (sum to ~1.0)
 W_GRU = 0.4167
 W_LSTM = 0.4167
 W_ISO = 0.1666
 
 def predict_batch(req):
     print(f"📨 Received batch of {len(req.data)} rows.")
-    print("🔍 First row example:", req.data[0].dict() if req.data else "EMPTY")
+    if not req.data:
+        return {"error": "No data received."}
 
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
-    # Collapse the last timestep of the input tensor to a DataFrame
-    raw_input_matrix = input_tensor[:, -1, :].numpy()  # shape [B, F]
-    df_debug = pd.DataFrame(raw_input_matrix)
 
-    print("📊 Sample of preprocessed vectors (last timestep used by ISO/model):")
-    print(df_debug.head(3))  # Show first 3 rows
+    # Optional debug: show numeric input stats
+    raw_input_matrix = input_tensor[:, -1, :].numpy()
+    df_debug = pd.DataFrame(raw_input_matrix)
+    print("📊 Sample of preprocessed vectors (last timestep):")
+    print(df_debug.head(3))
     print("📈 Stats:")
     print(df_debug.describe())
     print(f"🧮 Preprocessed tensor shape: {input_tensor.shape}")
@@ -47,44 +48,40 @@ def predict_batch(req):
         gru_out = GRU_MODEL(input_tensor).squeeze()
         lstm_out = LSTM_MODEL(input_tensor).squeeze()
 
-        gru_scores = gru_out.tolist() if isinstance(gru_out, torch.Tensor) and gru_out.ndim > 0 else [gru_out.item()]
-        lstm_scores = lstm_out.tolist() if isinstance(lstm_out, torch.Tensor) and lstm_out.ndim > 0 else [lstm_out.item()]
-        print(f"✅ Final GRU scores: {gru_scores}")
-        print(f"✅ Final LSTM scores: {lstm_scores}")
+        gru_scores = gru_out.tolist() if gru_out.ndim > 0 else [gru_out.item()]
+        lstm_scores = lstm_out.tolist() if lstm_out.ndim > 0 else [lstm_out.item()]
 
-    
-    print(f"🔮 GRU scores: {gru_scores}")
-    print(f"🔮 LSTM scores: {lstm_scores}")
+    print(f"✅ Final GRU scores: {gru_scores}")
+    print(f"✅ Final LSTM scores: {lstm_scores}")
 
-    iso_input = input_tensor[:, -1, :].numpy()
-    print(f"📊 ISO input shape: {iso_input.shape}")
-
+    iso_input = raw_input_matrix  # last timestep
     try:
         iso_scores = ISO_MODEL.decision_function(iso_input)
-        print(f"🧪 ISO scores: {iso_scores}")
         if isinstance(iso_scores, float) or not hasattr(iso_scores, "__len__"):
             iso_scores = [iso_scores] * len(req.data)
+        print(f"🧪 ISO scores: {iso_scores}")
     except Exception as e:
         print(f"⚠️ Isolation Forest error: {e}")
         iso_scores = [0.0] * len(req.data)
 
-    # 🧠 Combine scores and run through MLP
-    print("📥 Combining scores...")
-    input_scores = torch.tensor(
-        [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
-        dtype=torch.float32
-    )
+    # 🎛 Option A: manual ensemble logic
+    print("📥 Combining scores (manual weights)...")
+    for i in range(len(req.data)):
+        print(f"Row {i}: GRU={gru_scores[i]}, LSTM={lstm_scores[i]}, ISO={iso_scores[i]}")
 
-    with torch.no_grad():
-        # raw_preds = MLP_HEAD(input_scores).squeeze()
-        # ensemble_preds = raw_preds.tolist() if isinstance(raw_preds, torch.Tensor) and raw_preds.ndim > 0 else [raw_preds.item()]
-        for i in range(len(req.data)):
-            print(f"Row {i}: GRU={gru_scores[i]}, LSTM={lstm_scores[i]}, ISO={iso_scores[i]}")
-        ensemble_preds = [
-            W_GRU * gru_scores[i] + W_LSTM * lstm_scores[i] + W_ISO * iso_scores[i]
-            for i in range(len(req.data))
-        ]
+    ensemble_preds = [
+        W_GRU * gru_scores[i] + W_LSTM * lstm_scores[i] + W_ISO * iso_scores[i]
+        for i in range(len(req.data))
+    ]
 
+    # 🎛 Option B: Use MLP (uncomment to enable MLP-based prediction)
+    # input_scores = torch.tensor(
+    #     [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
+    #     dtype=torch.float32
+    # )
+    # with torch.no_grad():
+    #     raw_preds = MLP_HEAD(input_scores).squeeze()
+    #     ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
 
     return [
         {
@@ -94,4 +91,3 @@ def predict_batch(req):
         }
         for row, pred in zip(req.data, ensemble_preds)
     ]
-
