@@ -9,7 +9,7 @@ class EnsembleMLP(nn.Module):
             nn.Sigmoid()
         )
         # 🧪 Initialize with fixed weights
-        self.model[0].weight.data = torch.tensor([[0.5, 0.5, 0.0]])
+        self.model[0].weight.data = torch.tensor([[1.0/3, 1.0/3, 1.0/3]])
         self.model[0].bias.data.fill_(0.0)
 
     def forward(self, x):
