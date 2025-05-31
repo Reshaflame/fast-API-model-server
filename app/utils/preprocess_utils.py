@@ -16,13 +16,18 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
     df = pd.DataFrame(json_data)
 
     # Convert time column to integer seconds if needed
-    if df["time"].dtype == object:
-        # Try to parse timestamps from string (ISO format or otherwise)
-        df["time"] = pd.to_datetime(df["time"], errors="coerce")
-        df["time"] = df["time"].view("int64") // 1_000_000_000
-    else:
-        # Already numeric (int/float), just cast safely
-        df["time"] = pd.to_numeric(df["time"], errors="coerce").fillna(0).astype(int)
+    # Try datetime parsing first (for ISO strings); fallback to numeric
+    parsed_time = pd.to_datetime(df["time"], errors="coerce")
+    numeric_time = pd.to_numeric(df["time"], errors="coerce")
+
+    # Combine: Use datetime if parsed, else numeric
+    df["time"] = np.where(parsed_time.notna(),
+                        parsed_time.view("int64") // 1_000_000_000,
+                        numeric_time.fillna(0).astype("int64"))
+
+    # Clip to avoid negatives
+    df["time"] = df["time"].clip(lower=0)
+
 
     df["time"] = df["time"].clip(lower=0)  # remove invalid negative timestamps
 
