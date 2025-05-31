@@ -13,13 +13,16 @@ if not redis_url or not redis_url.startswith("redis://"):
 redis_client = redis.Redis.from_url(redis_url)
 print(f"🔑 Redis URL loaded successfully.")
 
-# 🌐 Detect and use public proxy URL
-proxy_url = os.getenv("RUNPOD_PROXY_URL", "http://127.0.0.1")
-print(f"🌐 Detected RUNPOD_PROXY_URL: {proxy_url}")  # This is the new log line
+# 🔁 Register proxy after app starts
+@app.on_event("startup")
+async def register_proxy_url():
+    proxy_url = os.getenv("RUNPOD_PROXY_URL", "http://127.0.0.1")
+    print(f"🌐 Detected RUNPOD_PROXY_URL: {proxy_url}")
 
-# 🔁 Register proxy address to Redis
-api_predict = f"{proxy_url}/api/predict"
-api_retrain = f"{proxy_url}/api/retrain"
-redis_client.set("TrueDetect:API_ENDPOINT", api_predict)
-redis_client.set("TrueDetect:RETRAIN_ENDPOINT", api_retrain)
-print(f"📡 Registered endpoints: {api_predict}, {api_retrain}")
+    api_predict = f"{proxy_url}/api/predict"
+    api_retrain = f"{proxy_url}/api/retrain"
+
+    redis_client.set("TrueDetect:API_ENDPOINT", api_predict)
+    redis_client.set("TrueDetect:RETRAIN_ENDPOINT", api_retrain)
+
+    print(f"📡 Registered endpoints: {api_predict}, {api_retrain}")

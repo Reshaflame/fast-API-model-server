@@ -44,12 +44,9 @@ COPY ./app /app/app
 COPY ./app/data /app/data
 COPY ./app/models /app/models
 
-# Add start.sh and make it executable
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
 # Set working directory
 WORKDIR /app
 
-# Launch script
-CMD ["/app/start.sh"]
+# Launch
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+
