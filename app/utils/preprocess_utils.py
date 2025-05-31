@@ -17,8 +17,14 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
 
     # Convert time column to integer seconds if needed
     if df["time"].dtype == object:
+        # Try to parse timestamps from string (ISO format or otherwise)
         df["time"] = pd.to_datetime(df["time"], errors="coerce")
-        df["time"] = (df["time"].astype("int64") // 1e9).astype(int)
+        df["time"] = df["time"].view("int64") // 1_000_000_000
+    else:
+        # Already numeric (int/float), just cast safely
+        df["time"] = pd.to_numeric(df["time"], errors="coerce").fillna(0).astype(int)
+
+    df["time"] = df["time"].clip(lower=0)  # remove invalid negative timestamps
 
     # Frequency-encode
     df["src_user_freq"] = df["src_user"].map(USER_FREQ).fillna(0)
