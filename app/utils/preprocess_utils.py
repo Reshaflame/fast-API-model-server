@@ -43,7 +43,10 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
         if col not in df.columns:
             df[col] = 0
     df = df[expected]
-
+    
+    print("📈 Sample preprocessed row:")
+    print(df.head(3))
+    
     df = df.astype(np.float32)
 
     # === Shape for GRU: [B, 1, F]

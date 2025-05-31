@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 import json
 from app.utils.preprocess_utils import preprocess_batch
 from app.services.model_loader import load_gru_with_guess, load_lstm_with_guess, load_isolation_forest
@@ -32,6 +33,14 @@ def predict_batch(req):
     print("🔍 First row example:", req.data[0].dict() if req.data else "EMPTY")
 
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
+    # Collapse the last timestep of the input tensor to a DataFrame
+    raw_input_matrix = input_tensor[:, -1, :].numpy()  # shape [B, F]
+    df_debug = pd.DataFrame(raw_input_matrix)
+
+    print("📊 Sample of preprocessed vectors (last timestep used by ISO/model):")
+    print(df_debug.head(3))  # Show first 3 rows
+    print("📈 Stats:")
+    print(df_debug.describe())
     print(f"🧮 Preprocessed tensor shape: {input_tensor.shape}")
 
     with torch.no_grad():
