@@ -11,11 +11,10 @@ ENV RAY_gpu=auto
 ENV PYTHONPATH="/app"
 ENV NUMBA_CUDA_DRIVER=/usr/local/cuda/compat/libcuda.so.1
 
-# CUDA paths
 ENV PATH=/usr/local/cuda/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
-# Install OS packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3.10-venv \
@@ -25,8 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.10 as default
-RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
-    python --version
+RUN ln -s /usr/bin/python3.10 /usr/bin/python && python --version
 
 # Install cuDF + RAPIDS (CUDA 12.1)
 RUN pip install --extra-index-url=https://pypi.nvidia.com \
@@ -34,21 +32,24 @@ RUN pip install --extra-index-url=https://pypi.nvidia.com \
 
 RUN pip install --no-cache-dir numba==0.57.1
 
-# Copy dependencies
+# Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir Flask gdown && \
     pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
 
-# Copy source code
+# Copy application files
 COPY ./app /app/app
 COPY ./app/data /app/data
 COPY ./app/models /app/models
 
+# Add start.sh and make it executable
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Set working directory
 WORKDIR /app
 
-# Start the FastAPI server using Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+# Launch script
+CMD ["/app/start.sh"]
