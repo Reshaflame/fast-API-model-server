@@ -14,7 +14,12 @@ with open("data/comp_freq.json") as f:
 
 def preprocess_batch(json_data: list[dict], expected_features_path="data/expected_features.json"):
     df = pd.DataFrame(json_data)
-
+    
+    # === Ensure expected columns exist ===
+    for col in ["src_user", "dst_user", "src_computer", "dst_computer"]:
+        if col not in df.columns:
+            df[col] = ""
+    
     # === Raw time (as int, same as training) ===
     df["time"] = pd.to_numeric(df["time"], errors="coerce").fillna(0).astype("int64")
     df["time"] = df["time"].clip(lower=0)
