@@ -47,12 +47,16 @@ def predict_batch(req):
     with torch.no_grad():
         gru_out = GRU_MODEL(input_tensor).squeeze()
         lstm_out = LSTM_MODEL(input_tensor).squeeze()
+        
+        # NOTE: Models were trained with flipped labels (-1=anomaly, 1=normal)
+        # So we invert the sigmoid output to match "higher = anomaly"
 
-        gru_scores = gru_out.tolist() if gru_out.ndim > 0 else [gru_out.item()]
-        lstm_scores = lstm_out.tolist() if lstm_out.ndim > 0 else [lstm_out.item()]
+        gru_scores = (1 - gru_out).tolist() if gru_out.ndim > 0 else [1 - gru_out.item()]
+        lstm_scores = (1 - lstm_out).tolist() if lstm_out.ndim > 0 else [1 - lstm_out.item()]
 
-    print(f"✅ Final GRU scores: {gru_scores}")
-    print(f"✅ Final LSTM scores: {lstm_scores}")
+
+    print(f"✅ Flipped GRU scores (anomaly perspective): {gru_scores}")
+    print(f"✅ Flipped LSTM scores (anomaly perspective): {lstm_scores}")   
 
     iso_input = raw_input_matrix  # last timestep
     try:
