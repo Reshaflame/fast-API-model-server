@@ -6,9 +6,10 @@ from app.models.isolation_forest import IsolationForestWrapper
 
 
 def load_gru_with_guess(path, input_size):
+    # ✅ Based on training results
     best_first = {"hidden_size": 64, "num_layers": 1}
     tried_configs = [best_first] + [
-        {"hidden_size": 128, "num_layers": 1},
+        {"hidden_size": 128, "num_layers": 1},  # Also performed very well
         {"hidden_size": 64, "num_layers": 2},
         {"hidden_size": 128, "num_layers": 2},
     ]
@@ -31,12 +32,14 @@ def load_gru_with_guess(path, input_size):
             print(f"❌ Failed with config {config}: {e}")
     raise ValueError("❌ Could not load GRU model with any known config.")
 
+
 def load_lstm_with_guess(path, input_size):
-    best_first = {"hidden_size": 128, "num_layers": 2}
+    # ✅ Based on training results
+    best_first = {"hidden_size": 64, "num_layers": 1}
     tried_configs = [best_first] + [
-        {"hidden_size": 64, "num_layers": 1},
+        {"hidden_size": 128, "num_layers": 1},  # Also performed very well
         {"hidden_size": 64, "num_layers": 2},
-        {"hidden_size": 128, "num_layers": 1},
+        {"hidden_size": 128, "num_layers": 2},
     ]
 
     for config in tried_configs:
@@ -58,7 +61,5 @@ def load_lstm_with_guess(path, input_size):
     raise ValueError("❌ Could not load LSTM+RNN model with any known config.")
 
 
-
 def load_isolation_forest(model_path: str):
     return IsolationForestWrapper(model_path)
-
