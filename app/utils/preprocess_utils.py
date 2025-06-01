@@ -22,8 +22,8 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
     # === Frequency-encode (no log or scaling) ===
     df["src_user_freq"] = df["src_user"].map(USER_FREQ).fillna(0)
     df["dst_user_freq"] = df["dst_user"].map(USER_FREQ).fillna(0)
-    df["src_comp_freq"] = df["src_comp"].map(COMP_FREQ).fillna(0)
-    df["dst_comp_freq"] = df["dst_comp"].map(COMP_FREQ).fillna(0)
+    df["src_comp_freq"] = df["src_computer"].map(COMP_FREQ).fillna(0)
+    df["dst_comp_freq"] = df["dst_computer"].map(COMP_FREQ).fillna(0)
 
     # === Categorical handling (just like training) ===
     for col in AUTH_CATEGORIES:
@@ -44,7 +44,6 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
             df[col] = 0
     df = df[expected]
 
-    # Optional debug print
     print("📈 Preprocessed sample row:")
     print(df.head(3))
 
