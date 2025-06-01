@@ -78,14 +78,16 @@ def predict_batch(req):
         for i in range(len(req.data))
     ]
 
-    # 🎛 Option B: Use MLP (uncomment to enable MLP-based prediction)
-    # input_scores = torch.tensor(
-    #     [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
-    #     dtype=torch.float32
-    # )
-    # with torch.no_grad():
-    #     raw_preds = MLP_HEAD(input_scores).squeeze()
-    #     ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
+    # 🎛 Option B: Use MLP (with corrected GRU/LSTM scores)
+    input_scores = torch.tensor(
+        [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
+        dtype=torch.float32
+    )
+
+    with torch.no_grad():
+        raw_preds = MLP_HEAD(input_scores).squeeze()
+        ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
+
 
     return [
         {
