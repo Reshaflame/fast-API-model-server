@@ -17,6 +17,14 @@ def preview_raw_data(df):
     print(df.head())
     print("\n📊 Columns:", df.columns.tolist())
 
+    if "label" in df.columns:
+        print("\n🔎 First 5 rows with label:")
+        print(df[["label"]].head())
+        print("\n🎯 Label Value Counts:")
+        print(df["label"].value_counts())
+        print(f"📉 Anomaly Ratio: {df['label'].eq(-1).mean():.2%}")
+
+
 def export_debug_sample(df):
     try:
         debug_sample = df.head(100)
@@ -90,12 +98,6 @@ if __name__ == "__main__":
     print("🚀 Loading preprocessed chunk...")
     df = load_csv(FILE_PATH)
     preview_raw_data(df)
-    
-    # === Optional: Class Balance Diagnostics ===
-    if "label" in df.columns:
-        print("\n📊 Label Counts:")
-        print(df["label"].value_counts())
-        print(f"🧠 Anomaly Ratio: {(df['label'] == -1).mean():.2%}")
 
     # === Optional: Class Balance Diagnostics ===
     if "label" in df.columns:
