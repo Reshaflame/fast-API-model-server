@@ -6,6 +6,9 @@ from app.services.predictor import GRU_MODEL, LSTM_MODEL, ISO_MODEL, MLP_HEAD, U
 import json
 
 FILE_PATH = "app/merged_100.txt.gz"
+
+DEBUG_EXPORT_PATH = "app/debug_merged_100.csv"
+
 EXPECTED_COLUMNS = [
     "row_id", "time", "src_user", "dst_user",
     "auth_type", "logon_type", "auth_orientation", "success"
@@ -15,6 +18,10 @@ def load_csv(filepath):
     with gzip.open(filepath, "rt", encoding="utf-8") as f:
         df = pd.read_csv(f)
     return df
+
+def export_raw_for_debug(df):
+    print(f"💾 Saving raw CSV snapshot to {DEBUG_EXPORT_PATH}")
+    df.to_csv(DEBUG_EXPORT_PATH, index=False)
 
 def validate_columns(df):
     missing = [col for col in EXPECTED_COLUMNS if col not in df.columns]
@@ -89,6 +96,8 @@ if __name__ == "__main__":
     df = load_csv(FILE_PATH)
     preview_raw_data(df)
     df = validate_columns(df)
+
+    export_raw_for_debug(df)  # 🔥 Save for inspection
 
     raw_dicts = df.to_dict(orient="records")
     pre_tensor = preprocess_batch(raw_dicts)        # [B, 10, F]
