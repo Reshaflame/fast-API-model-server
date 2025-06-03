@@ -24,6 +24,16 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
     df["time"] = pd.to_numeric(df["time"], errors="coerce").fillna(0).astype("int64")
     df["time"] = df["time"].clip(lower=0)
 
+    # === Normalize success values to match training ===
+    if "success" in df.columns:
+        df["success"] = df["success"].replace({
+            "Success": 1, "Fail": 0,
+            "success": 1, "fail": 0,
+            "SUCCESS": 1, "FAIL": 0
+        }).astype(int).astype(str)  # To allow categorical processing
+
+        print("🔍 Normalized 'success' values:", df["success"].unique())
+
     # === Frequency-encode (no log or scaling) ===
     df["src_user_freq"] = df["src_user"].map(USER_FREQ).fillna(0)
     df["dst_user_freq"] = df["dst_user"].map(USER_FREQ).fillna(0)
