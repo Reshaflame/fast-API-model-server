@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 FILE_PATH = "data/labeled_data/chunks/chunk_0_labeled.csv"
-DEBUG_EXPORT_PATH = "debug/debug_sample_from_chunk.csv"
+DEBUG_EXPORT_PATH = "/app/debug/debug_sample_from_chunk.csv"
 
 def load_csv(filepath):
     df = pd.read_csv(filepath)
