@@ -46,6 +46,13 @@ def run_all_models(input_tensor, raw_matrix, row_ids):
 
     print("GRU param count:", sum(p.numel() for p in GRU_MODEL.parameters()))
     print("GRU param sum  :", sum(p.sum().item() for p in GRU_MODEL.parameters()))
+    
+    print("\n🔍 GRU Raw Output Stats:")
+    print("Min:", gru_out.min().item())
+    print("Max:", gru_out.max().item())
+    print("Mean:", gru_out.mean().item())
+    print("Sample:", gru_out[:5])
+
 
     # Ensemble logic
     if USE_MLP:
