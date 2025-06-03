@@ -114,6 +114,9 @@ if __name__ == "__main__":
             anomaly_mask = df["label"] != 1
             num_anomalies = anomaly_mask.sum()
             print(f"📉 Rows with label != 1: {num_anomalies} ({100 * num_anomalies / len(df):.2f}%)")
+            if num_anomalies == 0:
+                print("⚠️ No anomalies in this chunk — skipping.")
+                continue
 
 
         # === Align features to match expected features.json ===
