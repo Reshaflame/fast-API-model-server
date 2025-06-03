@@ -6,6 +6,7 @@ import numpy as np
 
 FILE_PATH = "data/labeled_data/chunks/chunk_0_labeled.csv"
 DEBUG_EXPORT_PATH = "/app/debug/debug_sample_from_chunk.csv"
+EXPECTED_FEATURES_PATH = "app/data/expected_features.json"
 
 def load_csv(filepath):
     df = pd.read_csv(filepath)
@@ -41,7 +42,6 @@ def run_all_models(input_tensor, raw_matrix, row_ids):
 
     print("GRU param count:", sum(p.numel() for p in GRU_MODEL.parameters()))
     print("GRU param sum  :", sum(p.sum().item() for p in GRU_MODEL.parameters()))
-
 
     # Ensemble logic
     if USE_MLP:
@@ -81,17 +81,37 @@ if __name__ == "__main__":
     preview_raw_data(df)
     export_debug_sample(df)
 
-    # === Feature alignment ===
-    df_features = df.drop(columns=["label"])  # already preprocessed
-    # Drop string-identifying columns not used in training
-    drop_if_exists = ["src_user", "dst_user", "src_comp", "dst_comp"]
-    df_features = df_features.drop(columns=[col for col in drop_if_exists if col in df_features.columns])
-    row_ids = [f"row_{i}" for i in range(len(df_features))]
+    # === Optional: Class Balance Diagnostics ===
+    if "label" in df.columns:
+        print("\n📊 Label Distribution:")
+        print(df["label"].value_counts())
+        print(f"📉 Anomaly Ratio: {df['label'].eq(-1).mean():.2%}")
 
+    # === Align features to match expected features.json ===
+    with open(EXPECTED_FEATURES_PATH) as f:
+        expected_features = json.load(f)
+
+    missing = [col for col in expected_features if col not in df.columns]
+    extra = [col for col in df.columns if col not in expected_features and col != "label"]
+
+    if missing:
+        print(f"❌ Missing columns in chunk: {missing}")
+    if extra:
+        print(f"⚠️ Extra columns in chunk (ignored): {extra}")
+
+    df_features = df[expected_features].copy()
     df_np = df_features.astype(np.float32).to_numpy()
+
+    # === Tensor diagnostics ===
+    print("\n🧪 Inference Tensor Stats:")
+    print(f"Shape         : {df_np.shape}")
+    print(f"Mean          : {df_np.mean():.6f}")
+    print(f"Non-zero %    : {(df_np != 0).mean() * 100:.2f}%")
+
     tensor = torch.tensor(df_np, dtype=torch.float32)
     tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [B, 10, F]
     last_timestep = tensor_seq[:, -1, :].numpy()       # For ISO
 
+    row_ids = [f"row_{i}" for i in range(len(df_features))]
     results = run_all_models(tensor_seq, last_timestep, row_ids)
     summarize(results)
