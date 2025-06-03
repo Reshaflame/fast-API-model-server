@@ -1,5 +1,4 @@
 import gzip
-import json
 from app.services.predictor import predict_batch
 from app.utils.preprocess_utils import preprocess_batch
 from app.services.predictor import GRU_MODEL, LSTM_MODEL, ISO_MODEL
@@ -8,16 +7,34 @@ import pandas as pd
 
 FILE_PATH = "app/merged_100.txt.gz"
 
-def load_data(filepath):
-    with gzip.open(filepath, "rt", encoding="utf-8") as f:
-        lines = [json.loads(line.strip()) for line in f if line.strip()]
-    return lines
+EXPECTED_COLUMNS = [
+    "row_id", "time", "src_user", "dst_user",
+    "auth_type", "logon_type", "auth_orientation", "success"
+]
 
-def preview_data(data):
-    df = pd.DataFrame(data)
+def load_csv(filepath):
+    with gzip.open(filepath, "rt", encoding="utf-8") as f:
+        df = pd.read_csv(f)
+    return df
+
+def preview_data(df):
     print("🧾 First 5 rows:")
     print(df.head())
     print("\n📊 Columns:", df.columns.tolist())
+
+    missing = [col for col in EXPECTED_COLUMNS if col not in df.columns]
+    if missing:
+        print(f"❌ Missing columns in CSV: {missing}")
+        if "row_id" in missing:
+            print("🛠️ Generating default row_id values...")
+            df["row_id"] = [f"row_{i}" for i in range(len(df))]
+            missing.remove("row_id")
+
+        if missing:
+            raise ValueError("🚫 Cannot continue — required columns are missing.")
+    else:
+        print("✅ All required columns are present.")
+
 
 def run_predictions(data):
     batch_like = {"batch_id": "test_batch", "data": data}
@@ -36,7 +53,11 @@ def summarize_results(results):
 
 if __name__ == "__main__":
     print("🚀 Loading and testing file...")
-    data = load_data(FILE_PATH)
-    preview_data(data)
+    df = load_csv(FILE_PATH)
+    preview_data(df)
+
+    data = df.to_dict(orient="records")
     results = run_predictions(data)
     summarize_results(results)
+
+
