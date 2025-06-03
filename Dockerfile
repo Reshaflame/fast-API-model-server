@@ -49,3 +49,5 @@ WORKDIR /app
 
 # Run the FastAPI app directly
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+# CMD ["python", "app/test.py"]  # ← uncomment for testing
+
