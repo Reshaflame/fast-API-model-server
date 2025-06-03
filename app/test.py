@@ -79,7 +79,6 @@ if __name__ == "__main__":
     print("🚀 Loading preprocessed chunk...")
     df = load_csv(FILE_PATH)
     preview_raw_data(df)
-    export_debug_sample(df)
 
     # === Optional: Class Balance Diagnostics ===
     if "label" in df.columns:
@@ -100,6 +99,8 @@ if __name__ == "__main__":
         print(f"⚠️ Extra columns in chunk (ignored): {extra}")
 
     df_features = df[expected_features].copy()
+    export_debug_sample(df_features)
+
     df_np = df_features.astype(np.float32).to_numpy()
 
     # === Tensor diagnostics ===
