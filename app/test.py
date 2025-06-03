@@ -3,8 +3,14 @@ import torch
 from app.services.predictor import GRU_MODEL, LSTM_MODEL, ISO_MODEL, MLP_HEAD, USE_MLP
 import json
 import numpy as np
+import os
+import glob
 
-FILE_PATH = "data/labeled_data/chunks/chunk_1_labeled.csv"
+os.makedirs("debug", exist_ok=True)
+
+
+CHUNK_DIR = "data/labeled_data/chunks"
+chunk_files = sorted(glob.glob(f"{CHUNK_DIR}/*.csv"))
 DEBUG_EXPORT_PATH = "debug/debug_sample_from_chunk.csv"
 EXPECTED_FEATURES_PATH = "app/data/expected_features.json"
 
@@ -25,10 +31,10 @@ def preview_raw_data(df):
         print(f"📉 Anomaly Ratio: {df['label'].eq(-1).mean():.2%}")
 
 
-def export_debug_sample(df):
+def export_debug_sample(df, path):
     try:
         debug_sample = df.head(100)
-        debug_sample.to_csv(DEBUG_EXPORT_PATH, index=False)
+        debug_sample.to_csv(path, index=False)
         print(f"💾 Saved first 100 rows to {DEBUG_EXPORT_PATH} for inspection.")
     except Exception as e:
         print(f"❌ Failed to export debug sample: {e}")
@@ -95,72 +101,75 @@ def summarize(results):
         print(f"{r['row_id']}: anomaly={r['anomaly']} (score={r['score']})")
 
 if __name__ == "__main__":
-    print("🚀 Loading preprocessed chunk...")
-    df = load_csv(FILE_PATH)
-    preview_raw_data(df)
+    for path in chunk_files:
+        print("\n" + "=" * 80)
+        print(f"🚀 Running analysis on: {path}")
+        df = load_csv(path)
+        preview_raw_data(df)
 
-    # === Optional: Class Balance Diagnostics ===
-    if "label" in df.columns:
-        print("\n📊 Full Label Value Counts:")
-        print(df["label"].value_counts(dropna=False))
-        anomaly_mask = df["label"] != 1
-        num_anomalies = anomaly_mask.sum()
-        print(f"📉 Rows with label != 1: {num_anomalies} ({100 * num_anomalies / len(df):.2f}%)")
+        # === Optional: Class Balance Diagnostics ===
+        if "label" in df.columns:
+            print("\n📊 Full Label Value Counts:")
+            print(df["label"].value_counts(dropna=False))
+            anomaly_mask = df["label"] != 1
+            num_anomalies = anomaly_mask.sum()
+            print(f"📉 Rows with label != 1: {num_anomalies} ({100 * num_anomalies / len(df):.2f}%)")
 
 
-    # === Align features to match expected features.json ===
-    with open(EXPECTED_FEATURES_PATH) as f:
-        expected_features = json.load(f)
+        # === Align features to match expected features.json ===
+        with open(EXPECTED_FEATURES_PATH) as f:
+            expected_features = json.load(f)
 
-    missing = [col for col in expected_features if col not in df.columns]
-    extra = [col for col in df.columns if col not in expected_features and col != "label"]
+        missing = [col for col in expected_features if col not in df.columns]
+        extra = [col for col in df.columns if col not in expected_features and col != "label"]
 
-    if missing:
-        print(f"❌ Missing columns in chunk: {missing}")
-    if extra:
-        print(f"⚠️ Extra columns in chunk (ignored): {extra}")
+        if missing:
+            print(f"❌ Missing columns in chunk: {missing}")
+        if extra:
+            print(f"⚠️ Extra columns in chunk (ignored): {extra}")
 
-    df_features = df[expected_features].copy()
-    export_debug_sample(df_features)
+        df_features = df[expected_features].copy()
+        chunk_name = os.path.basename(path).replace(".csv", "")
+        export_debug_sample(df_features, f"debug/{chunk_name}_sample.csv")
 
-    df_np = df_features.astype(np.float32).to_numpy()
+        df_np = df_features.astype(np.float32).to_numpy()
 
-    # === Tensor diagnostics ===
-    print("\n🧪 Inference Tensor Stats:")
-    print(f"Shape         : {df_np.shape}")
-    print(f"Mean          : {df_np.mean():.6f}")
-    print(f"Non-zero %    : {(df_np != 0).mean() * 100:.2f}%")
+        # === Tensor diagnostics ===
+        print("\n🧪 Inference Tensor Stats:")
+        print(f"Shape         : {df_np.shape}")
+        print(f"Mean          : {df_np.mean():.6f}")
+        print(f"Non-zero %    : {(df_np != 0).mean() * 100:.2f}%")
 
-    tensor = torch.tensor(df_np, dtype=torch.float32)
-    tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [B, 10, F]
-    last_timestep = tensor_seq[:, -1, :].numpy()       # For ISO
+        tensor = torch.tensor(df_np, dtype=torch.float32)
+        tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [B, 10, F]
+        last_timestep = tensor_seq[:, -1, :].numpy()       # For ISO
 
-    row_ids = [f"row_{i}" for i in range(len(df_features))]
-    results = run_all_models(tensor_seq, last_timestep, row_ids)
+        row_ids = [f"row_{i}" for i in range(len(df_features))]
+        results = run_all_models(tensor_seq, last_timestep, row_ids)
 
-    # Later, after predictions...
-    if "label" in df.columns:
-        print("\n🔎 Predictions on Rows with label != 1:")
-        for row in results:
-            idx = int(row["row_id"].split("_")[1])
-            actual_label = df.iloc[idx]["label"]
-            if actual_label != 1:
-                print(f"{row['row_id']}: label={actual_label} → predicted={row['anomaly']} (score={row['score']})")
+        # Later, after predictions...
+        if "label" in df.columns:
+            print("\n🔎 Predictions on Rows with label != 1:")
+            for row in results:
+                idx = int(row["row_id"].split("_")[1])
+                actual_label = df.iloc[idx]["label"]
+                if actual_label != 1:
+                    print(f"{row['row_id']}: label={actual_label} → predicted={row['anomaly']} (score={row['score']})")
 
-    summarize(results)
+        summarize(results)
 
-    if "label" in df.columns and num_anomalies > 0:
-        print("\n💾 Exporting mismatched label rows...")
-        mismatch_rows = df[df["label"] != 1].copy()
-        mismatch_rows["model_score"] = [
-            r["score"] for r in results
-            if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
-        ]
-        mismatch_rows["model_pred"] = [
-            r["anomaly"] for r in results
-            if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
-        ]
-        mismatch_rows.to_csv("debug/debug_labeled_mismatches.csv", index=False)
-        print("📁 Saved to debug/debug_labeled_mismatches.csv")
-    else:
-        print("✅ No label mismatches found — skipping export.")
+        if "label" in df.columns and num_anomalies > 0:
+            print("\n💾 Exporting mismatched label rows...")
+            mismatch_rows = df[df["label"] != 1].copy()
+            mismatch_rows["model_score"] = [
+                r["score"] for r in results
+                if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
+            ]
+            mismatch_rows["model_pred"] = [
+                r["anomaly"] for r in results
+                if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
+            ]
+            mismatch_rows.to_csv(f"debug/{chunk_name}_labeled_mismatches.csv", index=False)
+            print("📁 Saved to debug/debug_labeled_mismatches.csv")
+        else:
+            print("✅ No label mismatches found — skipping export.")
