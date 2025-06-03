@@ -38,7 +38,10 @@ def run_all_models(input_tensor, raw_matrix, row_ids):
     print(f"✅ GRU sample scores: {gru_scores[:3]}")
     print(f"✅ LSTM sample scores: {lstm_scores[:3]}")
     print(f"✅ ISO sample scores: {iso_scores[:3]}")
-    print("Model parameters (GRU):", sum(p.numel() for p in GRU_MODEL.parameters()))
+
+    print("GRU param count:", sum(p.numel() for p in GRU_MODEL.parameters()))
+    print("GRU param sum  :", sum(p.sum().item() for p in GRU_MODEL.parameters()))
+
 
     # Ensemble logic
     if USE_MLP:
