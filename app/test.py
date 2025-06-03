@@ -7,7 +7,7 @@ import json
 
 FILE_PATH = "app/merged_100.txt.gz"
 
-DEBUG_EXPORT_PATH = "app/debug_merged_100.csv"
+DEBUG_EXPORT_PATH = "debug/debug_merged_100.csv"
 
 EXPECTED_COLUMNS = [
     "row_id", "time", "src_user", "dst_user",
