@@ -149,10 +149,18 @@ if __name__ == "__main__":
 
     summarize(results)
 
-    if "label" in df.columns:
+    if "label" in df.columns and num_anomalies > 0:
         print("\n💾 Exporting mismatched label rows...")
         mismatch_rows = df[df["label"] != 1].copy()
-        mismatch_rows["model_score"] = [r["score"] for r in results if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1]
-        mismatch_rows["model_pred"] = [r["anomaly"] for r in results if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1]
+        mismatch_rows["model_score"] = [
+            r["score"] for r in results
+            if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
+        ]
+        mismatch_rows["model_pred"] = [
+            r["anomaly"] for r in results
+            if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
+        ]
         mismatch_rows.to_csv("debug/debug_labeled_mismatches.csv", index=False)
         print("📁 Saved to debug/debug_labeled_mismatches.csv")
+    else:
+        print("✅ No label mismatches found — skipping export.")
