@@ -101,9 +101,12 @@ if __name__ == "__main__":
 
     # === Optional: Class Balance Diagnostics ===
     if "label" in df.columns:
-        print("\n📊 Label Distribution:")
-        print(df["label"].value_counts())
-        print(f"📉 Anomaly Ratio: {df['label'].eq(-1).mean():.2%}")
+        print("\n📊 Full Label Value Counts:")
+        print(df["label"].value_counts(dropna=False))
+        anomaly_mask = df["label"] != 1
+        num_anomalies = anomaly_mask.sum()
+        print(f"📉 Rows with label != 1: {num_anomalies} ({100 * num_anomalies / len(df):.2f}%)")
+
 
     # === Align features to match expected features.json ===
     with open(EXPECTED_FEATURES_PATH) as f:
@@ -134,4 +137,22 @@ if __name__ == "__main__":
 
     row_ids = [f"row_{i}" for i in range(len(df_features))]
     results = run_all_models(tensor_seq, last_timestep, row_ids)
+
+    # Later, after predictions...
+    if "label" in df.columns:
+        print("\n🔎 Predictions on Rows with label != 1:")
+        for row in results:
+            idx = int(row["row_id"].split("_")[1])
+            actual_label = df.iloc[idx]["label"]
+            if actual_label != 1:
+                print(f"{row['row_id']}: label={actual_label} → predicted={row['anomaly']} (score={row['score']})")
+
     summarize(results)
+
+    if "label" in df.columns:
+        print("\n💾 Exporting mismatched label rows...")
+        mismatch_rows = df[df["label"] != 1].copy()
+        mismatch_rows["model_score"] = [r["score"] for r in results if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1]
+        mismatch_rows["model_pred"] = [r["anomaly"] for r in results if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1]
+        mismatch_rows.to_csv("debug/debug_labeled_mismatches.csv", index=False)
+        print("📁 Saved to debug/debug_labeled_mismatches.csv")
