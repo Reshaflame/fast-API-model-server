@@ -4,7 +4,7 @@ from app.services.predictor import GRU_MODEL, LSTM_MODEL, ISO_MODEL, MLP_HEAD, U
 import json
 import numpy as np
 
-FILE_PATH = "data/labeled_data/chunks/chunk_0_labeled.csv"
+FILE_PATH = "data/labeled_data/chunks/chunk_1_labeled.csv"
 DEBUG_EXPORT_PATH = "debug/debug_sample_from_chunk.csv"
 EXPECTED_FEATURES_PATH = "app/data/expected_features.json"
 

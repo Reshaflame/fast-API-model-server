@@ -41,4 +41,4 @@ True-Detect-Key.pem
 debug/
 app/test.py
 app/merged_100.txt.gz
-app/data/labeled_data/chunks/chunk_0_labeled.csv
+app/data/
