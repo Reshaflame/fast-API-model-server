@@ -18,9 +18,13 @@ def preview_raw_data(df):
     print("\n📊 Columns:", df.columns.tolist())
 
 def export_debug_sample(df):
-    debug_sample = df.head(100)
-    debug_sample.to_csv(DEBUG_EXPORT_PATH, index=False)
-    print(f"💾 Saved first 100 rows to {DEBUG_EXPORT_PATH} for inspection.")
+    try:
+        debug_sample = df.head(100)
+        debug_sample.to_csv(DEBUG_EXPORT_PATH, index=False)
+        print(f"💾 Saved first 100 rows to {DEBUG_EXPORT_PATH} for inspection.")
+    except Exception as e:
+        print(f"❌ Failed to export debug sample: {e}")
+
 
 def run_all_models(input_tensor, raw_matrix, row_ids):
     with torch.no_grad():
