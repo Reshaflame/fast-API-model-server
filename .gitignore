@@ -38,7 +38,6 @@ Thumbs.db
 True-Detect-Key.pem
 
 # tests
-debug
 debug/debug_merged_100.csv
 app/test.py
 app/merged_100.txt.gz
