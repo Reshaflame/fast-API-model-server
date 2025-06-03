@@ -79,6 +79,9 @@ if __name__ == "__main__":
 
     # === Feature alignment ===
     df_features = df.drop(columns=["label"])  # already preprocessed
+    # Drop string-identifying columns not used in training
+    drop_if_exists = ["src_user", "dst_user", "src_comp", "dst_comp"]
+    df_features = df_features.drop(columns=[col for col in drop_if_exists if col in df_features.columns])
     row_ids = [f"row_{i}" for i in range(len(df_features))]
 
     df_np = df_features.astype(np.float32).to_numpy()
