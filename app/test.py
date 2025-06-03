@@ -1,39 +1,14 @@
 import pandas as pd
-import gzip
 import torch
-from app.utils.preprocess_utils import preprocess_batch
 from app.services.predictor import GRU_MODEL, LSTM_MODEL, ISO_MODEL, MLP_HEAD, USE_MLP
 import json
+import numpy as np
 
-FILE_PATH = "app/merged_100.txt.gz"
-
-DEBUG_EXPORT_PATH = "debug/debug_merged_100.csv"
-
-EXPECTED_COLUMNS = [
-    "row_id", "time", "src_user", "dst_user",
-    "auth_type", "logon_type", "auth_orientation", "success"
-]
+FILE_PATH = "data/labeled_data/chunks/chunk_0_labeled.csv"
+DEBUG_EXPORT_PATH = "debug/debug_sample_from_chunk.csv"
 
 def load_csv(filepath):
-    with gzip.open(filepath, "rt", encoding="utf-8") as f:
-        df = pd.read_csv(f)
-    return df
-
-def export_raw_for_debug(df):
-    print(f"💾 Saving raw CSV snapshot to {DEBUG_EXPORT_PATH}")
-    df.to_csv(DEBUG_EXPORT_PATH, index=False)
-
-def validate_columns(df):
-    missing = [col for col in EXPECTED_COLUMNS if col not in df.columns]
-    if missing:
-        print(f"❌ Missing columns: {missing}")
-        if "row_id" in missing:
-            print("🛠️ Generating row_id...")
-            df["row_id"] = [f"row_{i}" for i in range(len(df))]
-            missing.remove("row_id")
-        if missing:
-            raise ValueError("🚫 Cannot proceed — required fields missing.")
-    print("✅ Column validation passed.")
+    df = pd.read_csv(filepath)
     return df
 
 def preview_raw_data(df):
@@ -41,10 +16,15 @@ def preview_raw_data(df):
     print(df.head())
     print("\n📊 Columns:", df.columns.tolist())
 
-def run_all_models(preprocessed_tensor, raw_matrix, row_ids):
+def export_debug_sample(df):
+    debug_sample = df.head(100)
+    debug_sample.to_csv(DEBUG_EXPORT_PATH, index=False)
+    print(f"💾 Saved first 100 rows to {DEBUG_EXPORT_PATH} for inspection.")
+
+def run_all_models(input_tensor, raw_matrix, row_ids):
     with torch.no_grad():
-        gru_out = GRU_MODEL(preprocessed_tensor).squeeze()
-        lstm_out = LSTM_MODEL(preprocessed_tensor).squeeze()
+        gru_out = GRU_MODEL(input_tensor).squeeze()
+        lstm_out = LSTM_MODEL(input_tensor).squeeze()
 
         gru_scores = (1 - gru_out).tolist()
         lstm_scores = (1 - lstm_out).tolist()
@@ -92,17 +72,19 @@ def summarize(results):
         print(f"{r['row_id']}: anomaly={r['anomaly']} (score={r['score']})")
 
 if __name__ == "__main__":
-    print("🚀 Loading CSV...")
+    print("🚀 Loading preprocessed chunk...")
     df = load_csv(FILE_PATH)
     preview_raw_data(df)
-    df = validate_columns(df)
+    export_debug_sample(df)
 
-    export_raw_for_debug(df)  # 🔥 Save for inspection
+    # === Feature alignment ===
+    df_features = df.drop(columns=["label"])  # already preprocessed
+    row_ids = [f"row_{i}" for i in range(len(df_features))]
 
-    raw_dicts = df.to_dict(orient="records")
-    pre_tensor = preprocess_batch(raw_dicts)        # [B, 10, F]
-    raw_matrix = pre_tensor[:, -1, :].numpy()       # [B, F] for ISO
+    df_np = df_features.astype(np.float32).to_numpy()
+    tensor = torch.tensor(df_np, dtype=torch.float32)
+    tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [B, 10, F]
+    last_timestep = tensor_seq[:, -1, :].numpy()       # For ISO
 
-    row_ids = df["row_id"].tolist()
-    results = run_all_models(pre_tensor, raw_matrix, row_ids)
+    results = run_all_models(tensor_seq, last_timestep, row_ids)
     summarize(results)
