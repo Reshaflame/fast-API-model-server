@@ -54,7 +54,7 @@ def load_lstm_with_guess(path, input_size):
             model.eval()
             print(f"✅ LSTM+RNN model loaded successfully with config: {config}")
             with open("models/lstm_metadata.json", "w") as f:
-                json.dump(config, f)
+                json.dump({"hidden_size":128,"num_layers":2}, f)
             return model
         except Exception as e:
             print(f"❌ Failed with config {config}: {e}")

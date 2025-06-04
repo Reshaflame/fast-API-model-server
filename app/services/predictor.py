@@ -26,57 +26,47 @@ if USE_MLP:
 else:
     print("⚠️ No saved MLP weights found — using manual voting weights.")
 
-# ⚖️ Manual ensemble weights (sum to ~1.0)
-W_GRU = 0.4167
-W_LSTM = 0.4167
-W_ISO = 0.1666
+# ⚖️ Updated manual ensemble weights (sum to 1.0)
+W_GRU = 0.0   # GRU model currently being retrained
+W_LSTM = 0.9  # LSTM+RNN carries most of the vote
+W_ISO = 0.1   # Isolation‑Forest small contribution
 
 def predict_batch(req):
+    """Run ensemble prediction on a FastAPI request body."""
     print(f"📨 Received batch of {len(req.data)} rows.")
     if not req.data:
         return {"error": "No data received."}
 
+    # === Feature engineering ===
     input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
 
-    # Optional debug: show numeric input stats
+    # Diagnostics
     raw_input_matrix = input_tensor[:, -1, :].numpy()
-    df_debug = pd.DataFrame(raw_input_matrix)
-    print("📊 Sample of preprocessed vectors (last timestep):")
-    print(df_debug.head(3))
-    print("📈 Stats:")
-    print(df_debug.describe())
-    print(f"🧮 Preprocessed tensor shape: {input_tensor.shape}")
+    print("🧮 Preprocessed tensor shape:", input_tensor.shape)
 
+    # === Model forward passes ===
     with torch.no_grad():
-        gru_out = GRU_MODEL(input_tensor).squeeze()
+        gru_out  = GRU_MODEL(input_tensor).squeeze()
         lstm_out = LSTM_MODEL(input_tensor).squeeze()
 
-        # NOTE: Models were trained with flipped labels (-1 = anomaly, 1 = normal)
-        gru_scores = (1 - gru_out).tolist() if gru_out.ndim > 0 else [1 - gru_out.item()]
-        lstm_scores = (1 - lstm_out).tolist() if lstm_out.ndim > 0 else [1 - lstm_out.item()]
+        # 🚫 NO FLIPPING — models already output 1 = anomaly, 0 = normal
+        gru_scores  = gru_out.tolist()  if gru_out.ndim  > 0 else [gru_out.item()]
+        lstm_scores = lstm_out.tolist() if lstm_out.ndim > 0 else [lstm_out.item()]
 
-    print(f"✅ Flipped GRU scores (anomaly perspective): {gru_scores}")
-    print(f"✅ Flipped LSTM scores (anomaly perspective): {lstm_scores}")
-
-    iso_input = raw_input_matrix  # last timestep
+    # Isolation‑Forest (already 0‑1 normalised in wrapper)
     try:
-        iso_scores = ISO_MODEL.decision_function(iso_input)
+        iso_scores = ISO_MODEL.decision_function(raw_input_matrix)
         if isinstance(iso_scores, float) or not hasattr(iso_scores, "__len__"):
             iso_scores = [iso_scores] * len(req.data)
-        print(f"🧪 ISO scores: {iso_scores}")
     except Exception as e:
         print(f"⚠️ Isolation Forest error: {e}")
         iso_scores = [0.0] * len(req.data)
 
-    # 🎛 Ensemble logic
-    print("📥 Combining scores...")
-    for i in range(len(req.data)):
-        print(f"Row {i}: GRU={gru_scores[i]}, LSTM={lstm_scores[i]}, ISO={iso_scores[i]}")
-
+    # === Ensemble ===
     if USE_MLP:
         input_scores = torch.tensor(
             [[gru_scores[i], lstm_scores[i], iso_scores[i]] for i in range(len(req.data))],
-            dtype=torch.float32
+            dtype=torch.float32,
         )
         with torch.no_grad():
             raw_preds = MLP_HEAD(input_scores).squeeze()
@@ -89,11 +79,12 @@ def predict_batch(req):
         ]
         print("⚖️ Manual weighted ensemble used.")
 
+    # === Build response ===
     return [
         {
             "row_id": row.row_id,
             "anomaly": pred > 0.5,
-            "score": round(pred, 4)
+            "score": round(pred, 4),
         }
         for row, pred in zip(req.data, ensemble_preds)
     ]

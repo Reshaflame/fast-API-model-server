@@ -34,20 +34,17 @@ RUN pip install --no-cache-dir numba==0.57.1
 
 # Copy requirements and install Python packages
 COPY requirements.txt .
-RUN pip install --no-cache-dir Flask gdown && \
-    pip install --upgrade pip && \
+RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
 
 # Copy application files
-COPY ./app /app/app
-COPY ./app/data /app/data
-COPY ./app/models /app/models
+COPY ./app /app
 
 # Set working directory
 WORKDIR /app
 
 # Run the FastAPI app directly
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
-CMD ["python", "app/test.py"] 
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+# CMD ["python", "app/test.py"] 
 
