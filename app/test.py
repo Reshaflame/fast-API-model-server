@@ -164,16 +164,24 @@ if __name__ == "__main__":
 
         if "label" in df.columns and num_anomalies > 0:
             print("\n💾 Exporting mismatched label rows...")
-            mismatch_rows = df[df["label"] != 1].copy()
-            mismatch_rows["model_score"] = [
-                r["score"] for r in results
-                if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
-            ]
-            mismatch_rows["model_pred"] = [
-                r["anomaly"] for r in results
-                if df.iloc[int(r["row_id"].split("_")[1])]["label"] != 1
-            ]
-            mismatch_rows.to_csv(f"debug/{chunk_name}_labeled_mismatches.csv", index=False)
-            print("📁 Saved to debug/debug_labeled_mismatches.csv")
-        else:
-            print("✅ No label mismatches found — skipping export.")
+            mismatch_rows = []
+            for r in results:
+                try:
+                    idx = int(r["row_id"].split("_")[1])
+                    if idx >= len(df):
+                        continue
+                    actual_label = df.iloc[idx]["label"]
+                    if actual_label != 1:
+                        row = df.iloc[idx].copy()
+                        row["model_score"] = r["score"]
+                        row["model_pred"] = r["anomaly"]
+                        mismatch_rows.append(row)
+                except Exception as e:
+                    print(f"⚠️ Failed to process row {r['row_id']}: {e}")
+
+            if mismatch_rows:
+                mismatch_df = pd.DataFrame(mismatch_rows)
+                mismatch_df.to_csv(f"debug/{chunk_name}_labeled_mismatches.csv", index=False)
+                print("📁 Saved to debug/debug_labeled_mismatches.csv")
+            else:
+                print("✅ No mismatched rows found — skipping export.")
