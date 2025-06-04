@@ -45,8 +45,8 @@ def run_all_models(input_tensor, raw_matrix, row_ids):
         gru_out = GRU_MODEL(input_tensor).squeeze()
         lstm_out = LSTM_MODEL(input_tensor).squeeze()
 
-        gru_scores = (1 - gru_out).tolist()
-        lstm_scores = (1 - lstm_out).tolist()
+        gru_scores = gru_out.tolist() if gru_out.ndim > 0 else [gru_out.item()]
+        lstm_scores = lstm_out.tolist() if lstm_out.ndim > 0 else [lstm_out.item()]
 
     try:
         iso_scores = ISO_MODEL.decision_function(raw_matrix)
@@ -79,8 +79,8 @@ def run_all_models(input_tensor, raw_matrix, row_ids):
             mlp_preds = MLP_HEAD(input_scores).squeeze()
         ensemble_preds = mlp_preds.tolist()
     else:
-        print("⚖️ Using manual weights...")
-        W_GRU, W_LSTM, W_ISO = 0.4167, 0.4167, 0.1666
+        print("⚖️ Using manual weights (GRU=0.0, LSTM=0.9, ISO=0.1)...")
+        W_GRU, W_LSTM, W_ISO = 0.0, 0.9, 0.1
         ensemble_preds = [
             W_GRU * g + W_LSTM * l + W_ISO * i
             for g, l, i in zip(gru_scores, lstm_scores, iso_scores)
