@@ -143,11 +143,12 @@ if __name__ == "__main__":
         print(f"Mean          : {df_np.mean():.6f}")
         print(f"Non-zero %    : {(df_np != 0).mean() * 100:.2f}%")
 
-        tensor = torch.tensor(df_np, dtype=torch.float32)
-        tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [B, 10, F]
+        N = 10000
+        tensor = torch.tensor(df_np[:N], dtype=torch.float32)
+        tensor_seq = tensor.unsqueeze(1).repeat(1, 10, 1)  # [N, 10, F]
         last_timestep = tensor_seq[:, -1, :].numpy()       # For ISO
 
-        row_ids = [f"row_{i}" for i in range(len(df_features))]
+        row_ids = [f"row_{i}" for i in range(N)]
         results = run_all_models(tensor_seq, last_timestep, row_ids)
 
         # Later, after predictions...

@@ -37,9 +37,10 @@ def load_lstm_with_guess(path, input_size):
     # ✅ Based on training results
     best_first = {"hidden_size": 64, "num_layers": 1}
     tried_configs = [best_first] + [
-        {"hidden_size": 128, "num_layers": 1},  # Also performed very well
-        {"hidden_size": 64, "num_layers": 2},
         {"hidden_size": 128, "num_layers": 2},
+        {"hidden_size": 128, "num_layers": 1}, 
+        {"hidden_size": 64, "num_layers": 2},
+        {"hidden_size": 64, "num_layers": 1},
     ]
 
     for config in tried_configs:
