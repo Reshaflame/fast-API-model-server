@@ -49,6 +49,11 @@ async def retrain(request: Request):
             iso = ISO_MODEL.decision_function(features[i, -1, :].unsqueeze(0).numpy())[0]
             flat_scores.append([g, iso])
 
+    # 🛡️ Patch to prevent constant-output training
+    if len(set(labels)) == 1:
+        labels.append(1 - labels[0])             # Add opposite label
+        flat_scores.append(flat_scores[-1])      # Duplicate feature
+
     # Fine-tune DeepHead
     X = torch.tensor(flat_scores, dtype=torch.float32)
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
