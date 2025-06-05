@@ -9,7 +9,7 @@ with open("data/expected_features.json") as f:
 
 GRU_MODEL = load_model("models/gru_trained_model.pth", input_size)
 ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
-base_W = torch.tensor([[0.8, 0.2, 0.0]])    
+base_W = torch.tensor([[0.8, 0.2, 0.0]], dtype=torch.float32)   
 base_b = torch.zeros(1)
 MLP_HEAD  = LoRAEnsemble(base_W, base_b, rank=1, alpha=1.0)
 
