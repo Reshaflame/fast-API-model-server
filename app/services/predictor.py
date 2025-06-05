@@ -2,6 +2,7 @@ from app.utils.preprocess_utils import preprocess_batch
 from app.services.model_loader import load_model, load_isolation_forest
 from app.models.ensemble_head import EnsembleMLP, LoRAEnsemble
 import torch, json, os
+import numpy as np
 
 # ---------- load once ----------
 with open("data/expected_features.json") as f:
@@ -30,16 +31,16 @@ def predict_batch(req):
 
     # ─── Model scores ─────────────────────────────────────────────
     with torch.no_grad():
-        gru_raw = GRU_MODEL(input_tensor).view(-1)     # always 1-D [B]
-    gru_scores = gru_raw.tolist()                      # list len B
-    if not isinstance(gru_scores, list):               # extra guard (rare)
-        gru_scores = [gru_scores]
+        # always 1-D tensor [B] – even when B == 1
+        gru_raw = GRU_MODEL(input_tensor).flatten(start_dim=0)
 
+    gru_scores = gru_raw.tolist()                      # → list of floats
+
+    # Isolation-Forest: decision_function returns scalar when B == 1
     iso_raw = ISO_MODEL.decision_function(input_tensor[:, -1, :].numpy())
-    # decision_function gives scalar when B == 1
-    iso_scores = iso_raw.tolist() if hasattr(iso_raw, "tolist") else [iso_raw]
-    if not isinstance(iso_scores, list):
-        iso_scores = [iso_scores]
+    iso_scores = (
+        np.atleast_1d(iso_raw).astype(float).tolist()
+    )  # → list of floats, length B
 
     # ─── Ensemble ──────────────────────────────────────────────────────────
     weights_path = "models/mlp_weights.pth"
