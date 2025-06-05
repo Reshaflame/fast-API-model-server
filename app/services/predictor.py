@@ -48,6 +48,7 @@ def predict_batch(req):
             raw_preds = MLP_HEAD(input_scores).squeeze()
             ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
         print("🤖 MLP ensemble used.")
+        print("📈 probs", ensemble_preds[:10])
     else:
         ensemble_preds = [
             W_GRU * gru_scores[i] + W_ISO * iso_scores[i]

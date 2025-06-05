@@ -26,11 +26,13 @@ class LoRAEnsemble(nn.Module):
         # low-rank ΔW  (trainable)
         self.A = nn.Parameter(torch.zeros(rank, 3))   # (r, 3)
         self.B = nn.Parameter(torch.zeros(1, rank))   # (1, r)
+        self.delta_b = nn.Parameter(torch.zeros(1))
         self.scale = alpha / rank
         nn.init.normal_(self.A, std=0.02)
 
-    def forward(self, x):                 # x : [B, 3]
-        delta_w = self.scale * (self.B @ self.A)      # (1, 3)
-        w = self.base_weight + delta_w                # (1, 3)
-        logits = x @ w.T + self.base_bias             # (B, 1)
-        return torch.sigmoid(logits)                  # (B, 1)
+    def forward(self, x):  # x: [B, 3]
+        delta_w = self.scale * (self.B @ self.A)  # (1, 3)
+        w = self.base_weight + delta_w            # (1, 3)
+        b = self.base_bias + self.delta_b         # scalar + learnable shift
+        logits = x @ w.T + b                      # (B, 1)
+        return torch.sigmoid(logits)

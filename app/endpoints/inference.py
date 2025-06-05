@@ -65,6 +65,10 @@ async def retrain(request: Request):
         loss = loss_fn(outputs, y)
         loss.backward()
         optimizer.step()
+        with torch.no_grad():
+            MLP_HEAD.delta_b.clamp_(-3, 3)      # keeps bias sane
+            MLP_HEAD.A.clamp_(-2, 2)
+            MLP_HEAD.B.clamp_(-2, 2)
         print(f"[MLP] Epoch {epoch+1}: Loss = {loss.item():.6f}")
 
     MLP_HEAD.eval()
