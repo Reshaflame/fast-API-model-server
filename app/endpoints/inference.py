@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
+from app.services import predictor
 from app.services.predictor import predict_batch, GRU_MODEL, ISO_MODEL, HEAD
 from app.utils.preprocess_utils import preprocess_batch
 import torch
@@ -81,3 +82,18 @@ async def retrain(request: Request):
     print("✅ Reloaded DeepHead weights into memory.")
 
     return {"message": "MLP retrained successfully.", "samples": len(body)}
+
+# --------------------------------------------------------------
+@router.post("/reset_head")
+async def reset_head_api():
+    """
+    Deletes the saved DeepHead weights and re-initialises the head.
+    After this call, predictions fall back to the manual GRU+ISO ensemble
+    until /api/retrain is invoked again.
+    """
+    removed = predictor.reset_head()
+    if removed:
+        msg = "Saved DeepHead weights deleted and head re-initialised."
+    else:
+        msg = "No saved weights found; head was simply re-initialised."
+    return {"message": msg}

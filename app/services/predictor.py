@@ -71,3 +71,27 @@ def predict_batch(req):
         {"row_id": row.row_id, "anomaly": bool(binary_preds[i])}
         for i, row in enumerate(req.data)
     ]
+
+# ──────────────────────────────────────────────────────────────────────────
+# Runtime reset for DeepHead
+# ──────────────────────────────────────────────────────────────────────────
+def reset_head():
+    """
+    • Deletes models/mlp_weights.pth  (if present)
+    • Re-instantiates HEAD with fresh, random weights
+    • Returns True if a file was removed, else False
+    """
+    import os
+    global HEAD
+
+    removed = False
+    weight_path = "models/mlp_weights.pth"
+    if os.path.exists(weight_path):
+        os.remove(weight_path)
+        removed = True
+
+    # re-create a brand-new head (same class & device)
+    HEAD = DeepHead()
+    HEAD.eval()           # default state
+
+    return removed
