@@ -55,10 +55,10 @@ async def retrain(request: Request):
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
 
     loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(MLP_HEAD.parameters(), lr=0.05)
+    optimizer = torch.optim.Adam(MLP_HEAD.parameters(), lr=0.01)
 
     MLP_HEAD.train()
-    for epoch in range(50):
+    for epoch in range(10):
         optimizer.zero_grad()
         outputs = MLP_HEAD(X)
         loss = loss_fn(outputs, y)
