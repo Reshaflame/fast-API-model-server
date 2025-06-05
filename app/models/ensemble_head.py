@@ -17,29 +17,20 @@ class EnsembleMLP(nn.Module):
 
 class LoRAEnsemble(nn.Module):
     def __init__(self, base_weight, base_bias=None, rank=1, alpha=1.0):
-        """
-        base_weight : tensor shape (1, 3)
-        base_bias   : tensor shape (1,)   (can be zeros)
-        """
         super().__init__()
 
-        # --- frozen baseline ---------------------------------
-        self.base_weight = nn.Parameter(base_weight.clone(), requires_grad=False)
-        if base_bias is None:
-            base_bias = torch.zeros(1)
-        self.base_bias   = nn.Parameter(base_bias.clone(),   requires_grad=False)
+        # baseline (frozen)
+        self.register_buffer("base_weight", base_weight.view(1, 3))
+        self.register_buffer("base_bias",   torch.zeros(1) if base_bias is None else base_bias.view(1))
 
-        # --- LoRA parameters (trainable) ---------------------
-        #  (B @ A) must be (1, 3)  → choose  B: (1, r)   A: (r, 3)
-        self.A = nn.Parameter(torch.zeros(rank, 3))
-        self.B = nn.Parameter(torch.zeros(1, rank))
-        self.scale = alpha / rank      # standard LoRA scaling
+        # low-rank ΔW  (trainable)
+        self.A = nn.Parameter(torch.zeros(rank, 3))   # (r, 3)
+        self.B = nn.Parameter(torch.zeros(1, rank))   # (1, r)
+        self.scale = alpha / rank
+        nn.init.normal_(self.A, std=0.02)
 
-        # tiny init so it starts near-zero
-        nn.init.normal_(self.A, std=0.01)
-        nn.init.zeros_(self.B)
-
-    def forward(self, x):              # x shape [B, 3]
-        delta_w = self.scale * (self.B @ self.A)     # (1, 3)
-        logits  = x @ (self.base_weight + delta_w).T + self.base_bias  # (B,1)
-        return torch.sigmoid(logits)    # (B,1)
+    def forward(self, x):                 # x : [B, 3]
+        delta_w = self.scale * (self.B @ self.A)      # (1, 3)
+        w = self.base_weight + delta_w                # (1, 3)
+        logits = x @ w.T + self.base_bias             # (B, 1)
+        return torch.sigmoid(logits)                  # (B, 1)

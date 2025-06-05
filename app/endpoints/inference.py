@@ -61,6 +61,7 @@ async def retrain(request: Request):
     for epoch in range(10):
         optimizer.zero_grad()
         outputs = MLP_HEAD(X)
+        print(">>> logits shape", outputs.shape, "  W shape", (MLP_HEAD.base_weight + MLP_HEAD.scale * (MLP_HEAD.B @ MLP_HEAD.A)).shape)
         loss = loss_fn(outputs, y)
         loss.backward()
         optimizer.step()
