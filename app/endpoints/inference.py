@@ -49,29 +49,41 @@ async def retrain(request: Request):
             iso = ISO_MODEL.decision_function(features[i, -1, :].unsqueeze(0).numpy())[0]
             flat_scores.append([g, iso, 0.0])     # placeholder for LSTM
 
-
-    # Fine-tune the MLP
+    # ----------- fine-tune the LoRA head ---------------------------
     X = torch.tensor(flat_scores, dtype=torch.float32)
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
 
     loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(MLP_HEAD.parameters(), lr=0.02, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(
+        [
+            {"params": [MLP_HEAD.A, MLP_HEAD.B], "lr": 0.02},
+            {"params": [MLP_HEAD.delta_b],       "lr": 0.10},   # ⬆ bias learns faster
+        ],
+        weight_decay=1e-4,
+    )
+
+    print("🪛 delta_b (before) =", float(MLP_HEAD.delta_b.data))
 
     MLP_HEAD.train()
-    for epoch in range(10):
+    for epoch in range(30):                      # ← a few more epochs
         optimizer.zero_grad()
         outputs = MLP_HEAD(X)
-        print(">>> logits shape", outputs.shape, "  W shape", (MLP_HEAD.base_weight + MLP_HEAD.scale * (MLP_HEAD.B @ MLP_HEAD.A)).shape)
+        print(">>> logits shape", outputs.shape,
+            " W shape", (MLP_HEAD.base_weight + MLP_HEAD.scale * (MLP_HEAD.B @ MLP_HEAD.A)).shape)
         loss = loss_fn(outputs, y)
         loss.backward()
         optimizer.step()
+
+        # clamp so it can’t go crazy
         with torch.no_grad():
-            MLP_HEAD.delta_b.clamp_(-3, 3)      # keeps bias sane
+            MLP_HEAD.delta_b.clamp_(-3, 3)
             MLP_HEAD.A.clamp_(-2, 2)
             MLP_HEAD.B.clamp_(-2, 2)
-        print(f"[MLP] Epoch {epoch+1}: Loss = {loss.item():.6f}")
+
+        print(f"[MLP] Epoch {epoch+1:02d}: Loss = {loss.item():.6f}")
 
     MLP_HEAD.eval()
+    print("🪛 delta_b (after)  =", float(MLP_HEAD.delta_b.data))
     torch.save(MLP_HEAD.state_dict(), "models/mlp_weights.pth")
 
     # 🔄 Load the freshly saved weights
