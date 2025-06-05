@@ -60,7 +60,14 @@ async def retrain(request: Request):
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
 
     loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(HEAD.parameters(), lr=0.05)  # try 0.05 first
+    optimizer = torch.optim.Adam(
+        [
+            {"params": [MLP_HEAD.A, MLP_HEAD.B], "lr": 0.02},
+            {"params": [MLP_HEAD.delta_b],       "lr": 0.02},
+        ],
+        weight_decay=3e-4,
+    )
+
 
     HEAD.train()
     for epoch in range(30):
@@ -69,6 +76,8 @@ async def retrain(request: Request):
         loss = loss_fn(outputs, y)
         loss.backward()
         optimizer.step()
+        HEAD.A.clamp_(-8, 8)
+        HEAD.B.clamp_(-8, 8)
         print(f"[DeepHead] Epoch {epoch+1:02d}: Loss = {loss.item():.6f}")
 
     HEAD.eval()

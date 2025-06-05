@@ -16,7 +16,7 @@ class EnsembleMLP(nn.Module):
         return self.model(x)
 
 class LoRAEnsemble(nn.Module):
-    def __init__(self, base_weight, base_bias=None, rank=1, alpha=1.0):
+    def __init__(self, base_weight, base_bias=None, rank=1, alpha=8.0):
         super().__init__()
 
         # baseline (frozen)
