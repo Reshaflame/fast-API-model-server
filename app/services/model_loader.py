@@ -1,5 +1,6 @@
 import torch
 from app.models.gru import GRUAnomalyDetector
+from app.models.isolation_forest import IsolationForestWrapper
 
 def load_model(model_path: str, input_size: int, hidden_size=64, num_layers=1):
     model = GRUAnomalyDetector(input_size, hidden_size, num_layers)
