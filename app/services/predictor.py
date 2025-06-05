@@ -28,14 +28,18 @@ def predict_batch(req):
     """Takes FastAPI RequestBody → returns list[{row_id, anomaly}]"""
     input_tensor = preprocess_batch([row.dict() for row in req.data])
 
-    # ─── Model scores ───────────────────────────────────────────────────────
+    # ─── Model scores ─────────────────────────────────────────────
     with torch.no_grad():
-        gru_raw = GRU_MODEL(input_tensor).squeeze()              # tensor[B]
-    gru_scores = gru_raw.tolist()                                # python list
+        gru_raw = GRU_MODEL(input_tensor).view(-1)     # always 1-D [B]
+    gru_scores = gru_raw.tolist()                      # list len B
+    if not isinstance(gru_scores, list):               # extra guard (rare)
+        gru_scores = [gru_scores]
 
-    iso_scores = ISO_MODEL.decision_function(
-        input_tensor[:, -1, :].numpy()
-    )                                                            # list/ndarray
+    iso_raw = ISO_MODEL.decision_function(input_tensor[:, -1, :].numpy())
+    # decision_function gives scalar when B == 1
+    iso_scores = iso_raw.tolist() if hasattr(iso_raw, "tolist") else [iso_raw]
+    if not isinstance(iso_scores, list):
+        iso_scores = [iso_scores]
 
     # ─── Ensemble ──────────────────────────────────────────────────────────
     weights_path = "models/mlp_weights.pth"
