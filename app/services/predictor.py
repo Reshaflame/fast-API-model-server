@@ -36,23 +36,25 @@ def predict_batch(req):
     )                                                            # list/ndarray
 
     # ─── Ensemble ──────────────────────────────────────────────────────────
-    if USE_MLP:
-        mlp_in = torch.tensor(
-            [[gru_scores[i], iso_scores[i], 0.0]                 # 3-input MLP
-             for i in range(len(req.data))],
+    weights_path = "models/mlp_weights.pth"
+    if os.path.exists(weights_path):
+        input_scores = torch.tensor(
+            [[gru_scores[i], iso_scores[i], 0.0] for i in range(len(req.data))],
             dtype=torch.float32,
         )
         with torch.no_grad():
-            final_probs = MLP_HEAD(mlp_in).squeeze().tolist()
-        print("🤖  MLP ensemble used.")
+            raw_preds = MLP_HEAD(input_scores).squeeze()
+            ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
+        print("🤖 MLP ensemble used.")
     else:
-        final_probs = [
+        ensemble_preds = [
             W_GRU * gru_scores[i] + W_ISO * iso_scores[i]
             for i in range(len(req.data))
         ]
-        print("⚖️  Manual weighted ensemble used.")
+        print("⚖️ Manual weighted ensemble used.")
 
-    binary_preds = [p > 0.5 for p in final_probs]
+
+    binary_preds = [p > 0.5 for p in ensemble_preds]
 
     # ─── Response ──────────────────────────────────────────────────────────
     return [
