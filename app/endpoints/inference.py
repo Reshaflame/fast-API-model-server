@@ -68,4 +68,10 @@ async def retrain(request: Request):
 
     MLP_HEAD.eval()
     torch.save(MLP_HEAD.state_dict(), "models/mlp_weights.pth")
+
+    # 🔄 Load the freshly saved weights
+    MLP_HEAD.load_state_dict(torch.load("models/mlp_weights.pth"))
+    print("✅ Reloaded MLP weights into memory.")
+    print("🎯 New ensemble weights:", MLP_HEAD.model[0].weight.data)
+
     return {"message": "MLP retrained successfully.", "samples": len(body)}
