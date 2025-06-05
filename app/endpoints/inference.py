@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from app.services.predictor import predict_batch, GRU_MODEL, ISO_MODEL, MLP_HEAD
+from app.services.predictor import predict_batch, GRU_MODEL, ISO_MODEL, HEAD
 from app.utils.preprocess_utils import preprocess_batch
 import torch
 
@@ -47,50 +47,32 @@ async def retrain(request: Request):
             row_t = features[i].unsqueeze(0)      # [1, 1, F] in alpha
             g = GRU_MODEL(row_t).item()
             iso = ISO_MODEL.decision_function(features[i, -1, :].unsqueeze(0).numpy())[0]
-            flat_scores.append([g, iso, 0.0])     # placeholder for LSTM
+            flat_scores.append([g, iso])
 
-    # ----------- fine-tune the LoRA head ---------------------------
+    # Fine-tune DeepHead
     X = torch.tensor(flat_scores, dtype=torch.float32)
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
 
     loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(
-        [
-            {"params": [MLP_HEAD.A, MLP_HEAD.B], "lr": 0.02},
-            {"params": [MLP_HEAD.delta_b],       "lr": 0.10},   # ⬆ bias learns faster
-        ],
-        weight_decay=1e-4,
-    )
+    optimizer = torch.optim.Adam(HEAD.parameters(), lr=0.01, weight_decay=1e-4)
 
-    print("🪛 delta_b (before) =", float(MLP_HEAD.delta_b.data))
-
-    MLP_HEAD.train()
-    for epoch in range(30):                      # ← a few more epochs
+    HEAD.train()
+    for epoch in range(30):
         optimizer.zero_grad()
-        outputs = MLP_HEAD(X)
-        print(">>> logits shape", outputs.shape,
-            " W shape", (MLP_HEAD.base_weight + MLP_HEAD.scale * (MLP_HEAD.B @ MLP_HEAD.A)).shape)
+        outputs = HEAD(X)
         loss = loss_fn(outputs, y)
         loss.backward()
         optimizer.step()
+        print(f"[DeepHead] Epoch {epoch+1:02d}: Loss = {loss.item():.6f}")
 
-        # clamp so it can’t go crazy
-        with torch.no_grad():
-            MLP_HEAD.delta_b.clamp_(-3, 3)
-            MLP_HEAD.A.clamp_(-2, 2)
-            MLP_HEAD.B.clamp_(-2, 2)
-
-        print(f"[MLP] Epoch {epoch+1:02d}: Loss = {loss.item():.6f}")
-
-    MLP_HEAD.eval()
-    print("🪛 delta_b (after)  =", float(MLP_HEAD.delta_b.data))
-    torch.save(MLP_HEAD.state_dict(), "models/mlp_weights.pth")
+    HEAD.eval()
+    with torch.no_grad():
+        test_preds = HEAD(X).squeeze().tolist()
+        print("📈 DeepHead raw probs:", test_preds)
+    torch.save(HEAD.state_dict(), "models/mlp_weights.pth")
 
     # 🔄 Load the freshly saved weights
-    MLP_HEAD.load_state_dict(torch.load("models/mlp_weights.pth"))
-    print("✅ Reloaded MLP weights into memory.")
-    with torch.no_grad():
-        effective_w = MLP_HEAD.base_weight + MLP_HEAD.scale * (MLP_HEAD.B @ MLP_HEAD.A)
-        print("🎯 Effective ensemble weight:", effective_w.squeeze().tolist())
+    HEAD.load_state_dict(torch.load("models/mlp_weights.pth"))
+    print("✅ Reloaded DeepHead weights into memory.")
 
     return {"message": "MLP retrained successfully.", "samples": len(body)}

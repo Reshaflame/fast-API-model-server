@@ -36,3 +36,16 @@ class LoRAEnsemble(nn.Module):
         b = self.base_bias + self.delta_b         # scalar + learnable shift
         logits = x @ w.T + b                      # (B, 1)
         return torch.sigmoid(logits)
+
+class DeepHead(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(2, 8),   # GRU & ISO → 8 hidden
+            nn.ReLU(),
+            nn.Linear(8, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.net(x)        # x shape [B, 2]

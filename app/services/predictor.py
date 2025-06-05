@@ -1,6 +1,6 @@
 from app.utils.preprocess_utils import preprocess_batch
 from app.services.model_loader import load_model, load_isolation_forest
-from app.models.ensemble_head import EnsembleMLP, LoRAEnsemble
+from app.models.ensemble_head import EnsembleMLP, LoRAEnsemble, DeepHead
 import torch, json, os
 import numpy as np
 
@@ -13,6 +13,8 @@ ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
 base_W = torch.tensor([[0.8, 0.2, 0.0]], dtype=torch.float32)   
 base_b = torch.zeros(1)
 MLP_HEAD  = LoRAEnsemble(base_W, base_b, rank=1, alpha=1.0)
+base_features = 2                # gru + iso
+HEAD = DeepHead()
 
 USE_MLP   = os.path.exists("models/mlp_weights.pth")
 if USE_MLP:
@@ -46,11 +48,11 @@ def predict_batch(req):
     weights_path = "models/mlp_weights.pth"
     if os.path.exists(weights_path):
         input_scores = torch.tensor(
-            [[gru_scores[i], iso_scores[i], 0.0] for i in range(len(req.data))],
+            [[gru_scores[i], iso_scores[i]] for i in range(len(req.data))],
             dtype=torch.float32,
         )
         with torch.no_grad():
-            raw_preds = MLP_HEAD(input_scores).squeeze()
+            raw_preds = HEAD(input_scores).squeeze()
             ensemble_preds = raw_preds.tolist() if raw_preds.ndim > 0 else [raw_preds.item()]
         print("🤖 MLP ensemble used.")
         print("📈 probs", ensemble_preds[:10])
