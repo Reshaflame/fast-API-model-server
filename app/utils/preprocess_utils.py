@@ -17,9 +17,11 @@ def preprocess_batch(json_data: list[dict], expected_features_path="data/expecte
 
     # Convert time column to integer seconds if needed
     if df["time"].dtype == object:
-        df["time"] = pd.to_datetime(df["time"], errors="coerce")
-        df["time"] = df["time"].fillna(pd.Timestamp(0))
-        df["time"] = (df["time"].astype("int64") // 1e9).astype(int)
+        # --- robust timestamp to epoch-seconds -----------------------------------
+        ts = pd.to_datetime(df["time"], errors="coerce", utc=True)       # parse, keep UTC
+        ts = ts.fillna(pd.Timestamp(0, tz="UTC")).dt.tz_localize(None)   # replace NaT, drop tz
+        df["time"] = (ts.view("int64") // 1_000_000_000).astype(int)     # ns → s → int
+        # -------------------------------------------------------------------------
 
     # Frequency-encode
     df["src_user_freq"] = df["src_user"].map(USER_FREQ).fillna(0)
