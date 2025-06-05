@@ -54,7 +54,7 @@ async def retrain(request: Request):
     y = torch.tensor(labels, dtype=torch.float32).unsqueeze(1)
 
     loss_fn = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(HEAD.parameters(), lr=0.01, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(HEAD.parameters(), lr=0.05)  # try 0.05 first
 
     HEAD.train()
     for epoch in range(30):

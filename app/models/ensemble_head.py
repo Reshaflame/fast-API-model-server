@@ -37,15 +37,16 @@ class LoRAEnsemble(nn.Module):
         logits = x @ w.T + b                      # (B, 1)
         return torch.sigmoid(logits)
 
+
+# 2. add a non-linear hidden layer if you haven’t yet
 class DeepHead(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(2, 8),   # GRU & ISO → 8 hidden
+            nn.Linear(2, 8),   # GRU + ISO
             nn.ReLU(),
             nn.Linear(8, 1),
             nn.Sigmoid()
         )
-
     def forward(self, x):
-        return self.net(x)        # x shape [B, 2]
+        return self.net(x)
