@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from app.services.predictor import predict_batch , GRU_MODEL, MLP_HEAD
+from app.services.predictor import predict_batch, GRU_MODEL, ISO_MODEL, MLP_HEAD
 from app.utils.preprocess_utils import preprocess_batch
 import torch
 
