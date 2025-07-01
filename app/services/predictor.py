@@ -1,20 +1,25 @@
 import torch
 import pandas as pd
-import json
 import os
-from app.utils.preprocess_utils import preprocess_batch
+from app.utils.preprocess_utils import preprocess_records, EXPECTED_FEATURES
 from app.services.model_loader import load_gru_with_guess, load_lstm_with_guess, load_isolation_forest
 from app.models.ensemble_head import EnsembleMLP
 
-# 📦 Load expected feature size
-with open("data/expected_features.json") as f:
-    input_size = len(json.load(f))
+# 📦 Feature dimension comes straight from preprocess_utils
+input_size = len(EXPECTED_FEATURES)
 
 # 🧠 Load models
 GRU_MODEL = load_gru_with_guess("models/gru_trained_model.pth", input_size)
 LSTM_MODEL = load_lstm_with_guess("models/lstm_rnn_trained_model.pth", input_size)
 ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
 MLP_HEAD = EnsembleMLP()
+
+# ------------------------------------------------------------
+# Freeze GRU backbone + residual block; leave .fc trainable
+# ------------------------------------------------------------
+for name, param in GRU_MODEL.named_parameters():
+    if not name.startswith("fc"):
+        param.requires_grad = False
 
 # 🎛 Ensemble control
 weights_path = "models/mlp_weights.pth"
@@ -38,8 +43,12 @@ def predict_batch(req):
         return {"error": "No data received."}
 
     # === Feature engineering ===
-    input_tensor = preprocess_batch([row.dict() for row in req.data])  # [B, 10, F]
+    base_feats = preprocess_records([row.dict() for row in req.data])  # (B, F)
 
+    # Make a “fake” 10-step sequence for LSTM & legacy logic
+    seq_len      = 10
+    input_tensor = base_feats.unsqueeze(1).repeat(1, seq_len, 1)       # (B, 10, F)
+    
     # Diagnostics
     raw_input_matrix = input_tensor[:, -1, :].numpy()
     print("🧮 Preprocessed tensor shape:", input_tensor.shape)
@@ -83,8 +92,8 @@ def predict_batch(req):
     return [
         {
             "row_id": row.row_id,
-            "anomaly": pred > 0.5,
-            "score": round(pred, 4),
+            "anomaly": bool(pred > 0.9),   # cast to plain Python bool
+            "score":  round(float(pred), 4) # cast to Python float
         }
         for row, pred in zip(req.data, ensemble_preds)
     ]
