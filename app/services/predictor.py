@@ -11,7 +11,7 @@ input_size = len(EXPECTED_FEATURES)
 # 🧠 Load models
 GRU_MODEL = load_gru_with_guess("models/gru_trained_model.pth", input_size)
 LSTM_MODEL = load_lstm_with_guess("models/lstm_rnn_trained_model.pth", input_size)
-ISO_MODEL = load_isolation_forest("models/isolation_forest_model.joblib")
+ISO_MODEL = load_isolation_forest("models/iso_backbone.joblib")
 MLP_HEAD = EnsembleMLP()
 
 # ------------------------------------------------------------
@@ -92,7 +92,7 @@ def predict_batch(req):
     return [
         {
             "row_id": row.row_id,
-            "anomaly": bool(pred > 0.9),   # cast to plain Python bool
+            "anomaly": bool(pred > 0.95),   # cast to plain Python bool
             "score":  round(float(pred), 4) # cast to Python float
         }
         for row, pred in zip(req.data, ensemble_preds)
